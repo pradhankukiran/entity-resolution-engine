@@ -1,10 +1,13 @@
-"""Search endpoint — resolve a company name query against the database."""
+"""Search endpoint -- backward-compatible company search.
+
+Delegates to the generic entity router with entity_type='company'.
+"""
 
 from __future__ import annotations
 
 import time
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 
 from entity_resolution.api.schemas import (
     MatchResultResponse,
@@ -13,19 +16,16 @@ from entity_resolution.api.schemas import (
     StrategyScore,
 )
 from entity_resolution.core.dependencies import get_pipeline
-from entity_resolution.pipeline.pipeline import ResolutionPipeline
 
 router = APIRouter()
 
 
 @router.post("/search", response_model=SearchResponse)
-async def search(
-    request: SearchRequest,
-    pipeline: ResolutionPipeline = Depends(get_pipeline),
-) -> SearchResponse:
+async def search(request: SearchRequest) -> SearchResponse:
     """Resolve a company name query and return ranked matches."""
     start = time.time()
 
+    pipeline = await get_pipeline("company")
     result = await pipeline.resolve(request.query, request.limit)
 
     matches: list[MatchResultResponse] = []
@@ -43,9 +43,9 @@ async def search(
         matches.append(
             MatchResultResponse(
                 rank=m.rank,
-                company_name=m.company.name,
-                en_name=m.company.en_name,
-                corporate_number=m.company.corporate_number,
+                entity_name=m.entity.name,
+                entity_type=m.entity.type_name,
+                entity_data=m.entity.data,
                 score=m.score,
                 strategy_scores=strategy_scores,
             )
@@ -55,6 +55,7 @@ async def search(
 
     return SearchResponse(
         query=request.query,
+        entity_type="company",
         detected_language=result.detected_language,
         query_forms=result.query_forms,
         total_candidates=result.total_candidates,

@@ -1,8 +1,11 @@
-"""Match endpoint — compare two company names directly."""
+"""Match endpoint -- backward-compatible company name comparison.
+
+Delegates to the generic entity router with entity_type='company'.
+"""
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 
 from entity_resolution.api.schemas import (
     CompareResponse,
@@ -10,27 +13,16 @@ from entity_resolution.api.schemas import (
     StrategyScore,
 )
 from entity_resolution.core.dependencies import get_pipeline
-from entity_resolution.pipeline.pipeline import ResolutionPipeline
 
 router = APIRouter()
 
 
 @router.post("/match", response_model=CompareResponse)
-async def match(
-    request: MatchRequest,
-    pipeline: ResolutionPipeline = Depends(get_pipeline),
-) -> CompareResponse:
-    """Compare two company names and return a similarity score with explanation.
-
-    The pipeline's ``compare()`` returns a plain dict with keys:
-        - ``final_score``
-        - ``strategy_scores`` (dict of strategy_name -> score)
-        - ``strategy_details`` (list of dicts with per-strategy breakdowns)
-        - ``forms_a``, ``forms_b``
-    """
+async def match(request: MatchRequest) -> CompareResponse:
+    """Compare two company names and return a similarity score."""
+    pipeline = await get_pipeline("company")
     result = await pipeline.compare(request.name_a, request.name_b)
 
-    # Build typed StrategyScore list from the raw strategy_details dicts
     strategy_scores = [
         StrategyScore(
             strategy_name=detail["strategy"],
@@ -42,7 +34,6 @@ async def match(
         for detail in result.get("strategy_details", [])
     ]
 
-    # Build an explanation list from the available form information
     explanation: list[dict] = []
     if "forms_a" in result:
         explanation.append({

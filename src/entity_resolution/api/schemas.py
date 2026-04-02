@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 
@@ -9,7 +11,7 @@ class SearchRequest(BaseModel):
     """Request body for the /search endpoint."""
 
     query: str = Field(
-        ..., min_length=1, max_length=200, description="Company name to search for"
+        ..., min_length=1, max_length=200, description="Entity name to search for"
     )
     limit: int = Field(10, ge=1, le=50, description="Maximum number of results")
 
@@ -41,9 +43,9 @@ class MatchResultResponse(BaseModel):
     """A single ranked match result from the resolution pipeline."""
 
     rank: int
-    company_name: str
-    en_name: str | None
-    corporate_number: str
+    entity_name: str
+    entity_type: str
+    entity_data: dict[str, Any]
     score: float
     strategy_scores: list[StrategyScore]
 
@@ -52,6 +54,7 @@ class SearchResponse(BaseModel):
     """Response body for the /search endpoint."""
 
     query: str
+    entity_type: str
     detected_language: str
     query_forms: dict[str, str]
     total_candidates: int
@@ -93,6 +96,7 @@ class HealthResponse(BaseModel):
 class StatsResponse(BaseModel):
     """Response body for the /stats endpoint."""
 
-    total_companies: int
+    total_entities: int
     total_ngrams: int
     database_path: str
+    entity_types: list[str]

@@ -14,8 +14,8 @@ class Settings(BaseSettings):
     For example, ``ERE_DATABASE_PATH=data/prod.db`` sets ``database_path``.
     """
 
-    database_path: str = "data/companies.db"
-    nta_prefecture_code: str = "14"  # Kanagawa
+    database_path: str = "data/entities.db"
+    nta_prefecture_code: str = "14"  # Kanagawa (used by seed script)
     log_level: str = "INFO"
     host: str = "0.0.0.0"
     port: int = 8000
@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     # Batch config
     batch_max_queries: int = 100
     batch_worker_count: int = 4
+
+    # CORS
+    cors_origins: list[str] = ["http://localhost:3000", "http://localhost:8000"]
 
     model_config = SettingsConfigDict(env_file=".env", env_prefix="ERE_")
 
