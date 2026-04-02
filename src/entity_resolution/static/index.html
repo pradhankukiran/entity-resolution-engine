@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Entity Resolution Engine</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: #fff;
+      color: #1a1a1a;
+      font-size: 16px;
+      line-height: 1.6;
+    }
+
+    /* Header */
+    header {
+      border-bottom: 1px solid #d0d0d0;
+      padding: 20px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #fafafa;
+    }
+    .header-left { display: flex; align-items: center; gap: 20px; }
+    header h1 { font-size: 20px; font-weight: 600; color: #1a1a1a; }
+    .header-meta { font-size: 14px; color: #666; }
+    .header-right { display: flex; gap: 12px; align-items: center; }
+    .header-link {
+      font-size: 14px;
+      color: #0066cc;
+      text-decoration: none;
+      border: 1px solid #d0d0d0;
+      padding: 6px 14px;
+      background: #fff;
+    }
+    .header-link:hover { background: #f5f5f5; }
+
+    /* Layout */
+    .layout { display: flex; min-height: calc(100vh - 61px); }
+    .sidebar {
+      width: 260px;
+      border-right: 1px solid #d0d0d0;
+      background: #fafafa;
+      flex-shrink: 0;
+    }
+    .main { flex: 1; padding: 32px 48px; max-width: 1100px; }
+
+    /* Sidebar nav */
+    .nav-section {
+      padding: 20px 0;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    .nav-section:last-child { border-bottom: none; }
+    .nav-label {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #888;
+      padding: 0 20px 8px;
+    }
+    .nav-item {
+      display: block;
+      width: 100%;
+      text-align: left;
+      padding: 10px 20px;
+      font-size: 15px;
+      color: #333;
+      border: none;
+      background: none;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .nav-item:hover { background: #efefef; }
+    .nav-item.active {
+      background: #e8e8e8;
+      font-weight: 600;
+      color: #1a1a1a;
+      border-left: 3px solid #1a1a1a;
+      padding-left: 17px;
+    }
+    .nav-count {
+      float: right;
+      font-size: 13px;
+      color: #999;
+      font-weight: 400;
+    }
+
+    /* Panels */
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    /* Page title */
+    .page-title {
+      font-size: 24px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    .page-desc {
+      font-size: 15px;
+      color: #666;
+      margin-bottom: 28px;
+    }
+
+    /* Form elements */
+    label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 6px;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid #ccc;
+      font-size: 16px;
+      color: #1a1a1a;
+      background: #fff;
+      outline: none;
+      font-family: inherit;
+    }
+    input[type="text"]:focus { border-color: #333; }
+    input[type="text"]::placeholder { color: #aaa; }
+    textarea {
+      width: 100%;
+      min-height: 150px;
+      padding: 10px 14px;
+      border: 1px solid #ccc;
+      font-size: 15px;
+      font-family: monospace;
+      color: #1a1a1a;
+      background: #fff;
+      outline: none;
+      resize: vertical;
+    }
+    textarea:focus { border-color: #333; }
+    .field { margin-bottom: 16px; }
+    .field-row { display: flex; gap: 16px; }
+    .field-row > .field { flex: 1; }
+    .field-hint { font-size: 13px; color: #888; margin-top: 4px; }
+
+    /* Buttons */
+    .btn {
+      padding: 10px 24px;
+      font-size: 15px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      border: 1px solid;
+    }
+    .btn-primary {
+      background: #1a1a1a;
+      color: #fff;
+      border-color: #1a1a1a;
+    }
+    .btn-primary:hover { background: #333; }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-secondary {
+      background: #fff;
+      color: #333;
+      border-color: #ccc;
+    }
+    .btn-secondary:hover { background: #f5f5f5; }
+
+    /* Tables */
+    table { width: 100%; border-collapse: collapse; }
+    th {
+      text-align: left;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #666;
+      padding: 10px 14px;
+      border-bottom: 2px solid #d0d0d0;
+      background: #fafafa;
+    }
+    td {
+      padding: 12px 14px;
+      border-bottom: 1px solid #e8e8e8;
+      font-size: 15px;
+      vertical-align: top;
+    }
+    tr:hover td { background: #fafafa; }
+    .mono { font-family: monospace; font-size: 14px; color: #555; }
+
+    /* Score display */
+    .score-pill {
+      display: inline-block;
+      padding: 3px 10px;
+      font-size: 14px;
+      font-weight: 600;
+      font-family: monospace;
+      border: 1px solid;
+    }
+    .score-high { color: #15803d; border-color: #bbf7d0; background: #f0fdf4; }
+    .score-med { color: #a16207; border-color: #fde68a; background: #fefce8; }
+    .score-low { color: #b91c1c; border-color: #fecaca; background: #fef2f2; }
+
+    /* Score bar */
+    .score-bar-wrap { display: flex; align-items: center; gap: 8px; }
+    .score-bar { width: 80px; height: 4px; background: #e8e8e8; }
+    .score-bar-fill { height: 100%; }
+    .score-bar-fill.high { background: #15803d; }
+    .score-bar-fill.med { background: #a16207; }
+    .score-bar-fill.low { background: #b91c1c; }
+
+    /* Compare big score */
+    .big-score {
+      text-align: center;
+      padding: 32px 0 24px;
+      border-bottom: 1px solid #e8e8e8;
+      margin-bottom: 20px;
+    }
+    .big-score-label {
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #888;
+    }
+    .big-score-value {
+      font-size: 60px;
+      font-weight: 700;
+      font-family: monospace;
+      margin: 10px 0;
+    }
+    .big-score-names { font-size: 16px; color: #666; }
+
+    /* Info boxes */
+    .info-box {
+      border: 1px solid #d0d0d0;
+      padding: 20px;
+      margin-bottom: 20px;
+      background: #fafafa;
+    }
+    .info-box h3 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+    .info-box p, .info-box li {
+      font-size: 15px;
+      color: #555;
+      line-height: 1.7;
+    }
+    .info-box ul { padding-left: 20px; }
+    .info-box code {
+      font-family: monospace;
+      font-size: 14px;
+      background: #eee;
+      padding: 2px 5px;
+    }
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 700px) { .info-grid { grid-template-columns: 1fr; } }
+
+    /* Strategy breakdown */
+    .strategy-table { margin-top: 12px; }
+    .strategy-table th { font-size: 11px; padding: 8px 10px; }
+    .strategy-table td { font-size: 14px; padding: 8px 10px; }
+
+    /* Pipeline steps */
+    .steps-section { margin-top: 20px; }
+    .steps-section h4 {
+      font-size: 14px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #666;
+      margin-bottom: 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #e8e8e8;
+    }
+    .step-row {
+      display: flex;
+      gap: 16px;
+      padding: 8px 0;
+      border-bottom: 1px solid #f0f0f0;
+      font-size: 14px;
+    }
+    .step-row:last-child { border-bottom: none; }
+    .step-name { font-weight: 600; min-width: 160px; color: #333; }
+    .step-detail { color: #555; word-break: break-all; }
+    .step-arrow { color: #999; margin: 0 4px; }
+
+    /* Tags */
+    .tag {
+      display: inline-block;
+      font-size: 13px;
+      font-family: monospace;
+      padding: 3px 8px;
+      border: 1px solid #ddd;
+      background: #f5f5f5;
+      color: #555;
+      margin: 2px 2px 2px 0;
+    }
+    .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+
+    /* Expand */
+    .expand-link {
+      font-size: 14px;
+      color: #0066cc;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+      font-family: inherit;
+    }
+    .expand-link:hover { text-decoration: underline; }
+    .expandable { display: none; }
+    .expandable.open { display: block; }
+
+    /* Batch status */
+    .status-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .status-pending { background: #f5f5f5; color: #888; border: 1px solid #ddd; }
+    .status-processing { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+    .status-completed { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+    .status-failed { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+
+    /* Loading */
+    .loading { text-align: center; padding: 40px; color: #888; font-size: 15px; }
+    .spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 2px solid #ddd;
+      border-top-color: #333;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .empty { text-align: center; padding: 48px; color: #888; font-size: 15px; }
+    .empty p { margin-top: 6px; }
+
+    .section { margin-bottom: 28px; }
+    .divider { border-top: 1px solid #e8e8e8; margin: 28px 0; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-left">
+      <h1>Entity Resolution Engine</h1>
+      <span class="header-meta">Cross-Language Corporate Entity Matching &mdash; JP / EN</span>
+    </div>
+    <div class="header-right">
+      <a href="/docs" class="header-link">API Docs</a>
+      <a href="/health" class="header-link">Health</a>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="sidebar">
+      <div class="nav-section">
+        <div class="nav-label">Resolution</div>
+        <button class="nav-item active" data-tab="search">Entity Search</button>
+        <button class="nav-item" data-tab="compare">Name Comparison</button>
+        <button class="nav-item" data-tab="batch">Batch Processing</button>
+      </div>
+      <div class="nav-section">
+        <div class="nav-label">Reference</div>
+        <button class="nav-item" data-tab="about">System Overview</button>
+        <button class="nav-item" data-tab="api-ref">API Reference</button>
+      </div>
+    </nav>
+
+    <div class="main">
+
+      <!-- SEARCH -->
+      <div id="search" class="panel active">
+        <div class="page-title">Entity Search</div>
+        <div class="page-desc">Search the corporate registry by company name. Supports Japanese (kanji, kana) and English input with automatic cross-language matching.</div>
+        <div class="section">
+          <div class="field">
+            <label for="search-query">Query</label>
+            <input type="text" id="search-query" placeholder="Company name in Japanese or English">
+            <div class="field-hint">Examples: Sony, トヨタ自動車, 株式会社日立製作所, Honda Motor Co.</div>
+          </div>
+          <button class="btn btn-primary" id="search-btn">Search</button>
+        </div>
+        <div id="search-results"></div>
+      </div>
+
+      <!-- COMPARE -->
+      <div id="compare" class="panel">
+        <div class="page-title">Name Comparison</div>
+        <div class="page-desc">Compare two company names directly. Returns a similarity score with per-strategy breakdown and normalization trace. No database lookup required.</div>
+        <div class="section">
+          <div class="field-row">
+            <div class="field">
+              <label for="name-a">Name A</label>
+              <input type="text" id="name-a" placeholder="e.g. ソニー株式会社">
+            </div>
+            <div class="field">
+              <label for="name-b">Name B</label>
+              <input type="text" id="name-b" placeholder="e.g. Sony Corporation">
+            </div>
+          </div>
+          <button class="btn btn-primary" id="compare-btn">Compare</button>
+        </div>
+        <div id="compare-results"></div>
+      </div>
+
+      <!-- BATCH -->
+      <div id="batch" class="panel">
+        <div class="page-title">Batch Processing</div>
+        <div class="page-desc">Submit multiple entity search queries as a single batch job. Queries are processed concurrently with progress tracking.</div>
+        <div class="section">
+          <div class="field">
+            <label for="batch-input">Queries (one per line)</label>
+            <textarea id="batch-input" placeholder="ソニー&#10;Toyota Motor&#10;日立製作所&#10;Honda&#10;Panasonic"></textarea>
+            <div class="field-hint">Maximum 100 queries per batch. Each query returns up to 5 matches.</div>
+          </div>
+          <button class="btn btn-primary" id="batch-btn">Submit Batch</button>
+        </div>
+        <div id="batch-results"></div>
+      </div>
+
+      <!-- ABOUT -->
+      <div id="about" class="panel">
+        <div class="page-title">System Overview</div>
+        <div class="page-desc">Architecture and methodology of the entity resolution pipeline.</div>
+
+        <div class="info-box">
+          <h3>What this system does</h3>
+          <p>This engine resolves company entities across Japanese and English by normalizing, transliterating, and fuzzy-matching company names against a registry of ~50&ndash;100k Japanese corporate records sourced from the National Tax Agency (NTA). A query like &ldquo;Sony&rdquo; will match &ldquo;ソニー株式会社&rdquo; and vice versa.</p>
+        </div>
+
+        <div class="info-box">
+          <h3>Resolution Pipeline</h3>
+          <p>Every query passes through six stages:</p>
+          <ul>
+            <li><strong>Language Detection</strong> &mdash; CJK Unicode range detection with langdetect fallback. Any hiragana/katakana triggers Japanese path.</li>
+            <li><strong>Text Normalization</strong> &mdash; NFKC Unicode normalization, corporate suffix stripping (株式会社, Corporation, Ltd., etc.), case folding, whitespace collapse.</li>
+            <li><strong>Transliteration</strong> &mdash; Japanese text is romanized via pykakasi (Hepburn). Long-vowel variants are generated (sonii &rarr; sony, soni).</li>
+            <li><strong>Phonetic Encoding</strong> &mdash; A Soundex-inspired key groups phonetically similar consonants. &ldquo;sony&rdquo; and &ldquo;soni&rdquo; produce the same key.</li>
+            <li><strong>Candidate Blocking</strong> &mdash; Trigram index + phonetic key lookup narrows ~100k records to ~200 candidates before expensive scoring.</li>
+            <li><strong>Ensemble Scoring</strong> &mdash; Four weighted strategies score each candidate. The best score across all form pairings wins.</li>
+          </ul>
+        </div>
+
+        <div class="info-grid">
+          <div class="info-box">
+            <h3>Matching Strategies</h3>
+            <ul>
+              <li><strong>Jaro-Winkler</strong> (30%) &mdash; Prefix-weighted edit similarity. Good for typos and short strings.</li>
+              <li><strong>Levenshtein</strong> (25%) &mdash; Normalized edit distance. Penalizes insertions, deletions, substitutions.</li>
+              <li><strong>Token Sort</strong> (25%) &mdash; Sorts tokens alphabetically before comparing. Handles word reordering.</li>
+              <li><strong>Phonetic</strong> (20%) &mdash; Compares Soundex-style keys. Catches cross-language matches that sound alike.</li>
+            </ul>
+          </div>
+          <div class="info-box">
+            <h3>Data Source</h3>
+            <ul>
+              <li>Japan National Tax Agency (NTA) corporate number registry</li>
+              <li>~50&ndash;100k records per prefecture (default: Kanagawa, code 14)</li>
+              <li>Fields: corporate number, company name (kanji), furigana, English name, address</li>
+              <li>Pre-computed columns: normalized name, romaji, phonetic key, character trigrams</li>
+            </ul>
+          </div>
+          <div class="info-box">
+            <h3>Multi-Form Comparison</h3>
+            <p>Each query generates multiple representations (original, normalized, romaji, phonetic key). Each candidate also has multiple forms. The scorer tries all compatible pairings and keeps the best. This is how &ldquo;ソニー&rdquo; matches &ldquo;Sony&rdquo; &mdash; through the romaji form &ldquo;sonii&rdquo;.</p>
+          </div>
+          <div class="info-box">
+            <h3>Technology</h3>
+            <ul>
+              <li>Python 3.11+, FastAPI, uvicorn</li>
+              <li>rapidfuzz (fuzzy matching), pykakasi (JP transliteration)</li>
+              <li>aiosqlite (async SQLite, ANSI SQL for Snowflake portability)</li>
+              <li>Pluggable strategy architecture via ABC registry</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- API REF -->
+      <div id="api-ref" class="panel">
+        <div class="page-title">API Reference</div>
+        <div class="page-desc">REST endpoints available at this host. Full interactive documentation at <a href="/docs">/docs</a> (Swagger UI).</div>
+
+        <table>
+          <thead>
+            <tr><th>Method</th><th>Endpoint</th><th>Description</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="tag">POST</span></td>
+              <td class="mono">/search</td>
+              <td>Search the corporate registry by company name. Returns ranked matches with scores and pipeline explanation. Body: <code>{"query": "Sony", "limit": 10}</code></td>
+            </tr>
+            <tr>
+              <td><span class="tag">POST</span></td>
+              <td class="mono">/match</td>
+              <td>Compare two names directly without database lookup. Returns similarity score and per-strategy breakdown. Body: <code>{"name_a": "ソニー", "name_b": "Sony"}</code></td>
+            </tr>
+            <tr>
+              <td><span class="tag">POST</span></td>
+              <td class="mono">/batch</td>
+              <td>Submit a batch of search queries for async processing. Returns a job ID for polling. Body: <code>{"queries": [{"query": "Sony", "limit": 5}]}</code></td>
+            </tr>
+            <tr>
+              <td><span class="tag">GET</span></td>
+              <td class="mono">/batch/{job_id}</td>
+              <td>Poll batch job status and retrieve results when complete.</td>
+            </tr>
+            <tr>
+              <td><span class="tag">GET</span></td>
+              <td class="mono">/health</td>
+              <td>Liveness check. Returns <code>{"status": "healthy"}</code>.</td>
+            </tr>
+            <tr>
+              <td><span class="tag">GET</span></td>
+              <td class="mono">/stats</td>
+              <td>Database statistics: total companies and trigram count.</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="divider"></div>
+
+        <div class="info-box">
+          <h3>Quick Start</h3>
+          <ul>
+            <li><code>make install</code> &mdash; Install dependencies</li>
+            <li><code>make seed</code> &mdash; Download NTA data and populate the database</li>
+            <li><code>make dev</code> &mdash; Start the development server</li>
+            <li><code>make test</code> &mdash; Run the test suite (138 tests)</li>
+            <li><code>make docker</code> &mdash; Build and run in Docker</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    const API = '';
+
+    // Navigation
+    document.querySelectorAll('.nav-item').forEach(item => {
+      item.addEventListener('click', () => {
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        item.classList.add('active');
+        document.getElementById(item.dataset.tab).classList.add('active');
+      });
+    });
+
+    function scoreClass(s) { return s >= 0.7 ? 'high' : s >= 0.4 ? 'med' : 'low'; }
+    function scorePillClass(s) { return s >= 0.7 ? 'score-high' : s >= 0.4 ? 'score-med' : 'score-low'; }
+    function pct(s) { return (s * 100).toFixed(1); }
+    function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+    // SEARCH
+    const searchBtn = document.getElementById('search-btn');
+    const searchInput = document.getElementById('search-query');
+    const searchResults = document.getElementById('search-results');
+
+    async function doSearch() {
+      const query = searchInput.value.trim();
+      if (!query) return;
+      searchBtn.disabled = true;
+      searchResults.innerHTML = '<div class="loading"><span class="spinner"></span> Searching...</div>';
+      try {
+        const res = await fetch(`${API}/search`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({query, limit: 20}),
+        });
+        const data = await res.json();
+        renderSearch(data);
+      } catch (e) {
+        searchResults.innerHTML = `<div class="info-box" style="border-color:#fecaca;background:#fef2f2">Error: ${e.message}</div>`;
+      } finally { searchBtn.disabled = false; }
+    }
+    searchBtn.addEventListener('click', doSearch);
+    searchInput.addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+
+    function renderSearch(data) {
+      let html = '';
+
+      // Query forms
+      if (data.query_forms) {
+        html += '<div class="tags" style="margin-bottom:16px">';
+        for (const [k, v] of Object.entries(data.query_forms)) {
+          if (k === 'language' || k === 'variants') continue;
+          html += `<span class="tag">${k}: ${esc(v)}</span>`;
+        }
+        html += `<span class="tag">lang: ${data.detected_language}</span>`;
+        html += '</div>';
+      }
+
+      if (!data.matches || data.matches.length === 0) {
+        html += `<div class="empty"><p>No matches found for &ldquo;${esc(data.query)}&rdquo;</p>
+          <p style="font-size:12px">The database may be empty. Run <code>make seed</code> to populate it.</p></div>`;
+      } else {
+        html += `<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+          <span style="font-size:13px;font-weight:600">${data.matches.length} result${data.matches.length !== 1 ? 's' : ''}</span>
+          <span style="font-size:11px;color:#888">${data.total_candidates} candidates evaluated in ${data.processing_time_ms.toFixed(0)}ms</span>
+        </div>`;
+        html += '<table><thead><tr><th>#</th><th>Company Name</th><th>English Name</th><th>Corp. Number</th><th>Score</th><th></th></tr></thead><tbody>';
+        for (const m of data.matches) {
+          const uid = `s-${m.rank}`;
+          html += `<tr>
+            <td style="font-weight:600;color:#888">${m.rank}</td>
+            <td style="font-weight:600">${esc(m.company_name)}</td>
+            <td>${m.en_name ? esc(m.en_name) : '<span style="color:#ccc">&mdash;</span>'}</td>
+            <td class="mono">${m.corporate_number}</td>
+            <td><span class="score-pill ${scorePillClass(m.score)}">${pct(m.score)}%</span></td>
+            <td><button class="expand-link" onclick="toggle('${uid}')">details</button></td>
+          </tr>
+          <tr><td colspan="6" style="padding:0;border:none">
+            <div id="${uid}" class="expandable">
+              <table class="strategy-table" style="margin:8px 12px 12px"><thead><tr><th>Strategy</th><th>Score</th><th>Query Form</th><th>Candidate Form</th></tr></thead><tbody>
+                ${m.strategy_scores.map(s => `<tr>
+                  <td>${s.strategy_name}</td>
+                  <td><span class="score-pill ${scorePillClass(s.score)}">${pct(s.score)}%</span></td>
+                  <td class="mono">${esc(s.query_form)}</td>
+                  <td class="mono">${esc(s.candidate_form)}</td>
+                </tr>`).join('')}
+              </tbody></table>
+            </div>
+          </td></tr>`;
+        }
+        html += '</tbody></table>';
+      }
+
+      // Pipeline steps
+      if (data.processing_steps && data.processing_steps.length > 0) {
+        html += '<div class="steps-section"><h4>Pipeline Trace</h4>';
+        for (const s of data.processing_steps) {
+          html += `<div class="step-row">
+            <div class="step-name">${esc(s.step)}</div>
+            <div class="step-detail">`;
+          if (s.input_value) html += esc(s.input_value);
+          if (s.input_value && s.output_value) html += '<span class="step-arrow">&rarr;</span>';
+          if (s.output_value) html += esc(s.output_value);
+          if (!s.input_value && !s.output_value) html += esc(s.description);
+          html += '</div></div>';
+        }
+        html += '</div>';
+      }
+
+      searchResults.innerHTML = html;
+    }
+
+    function toggle(id) { document.getElementById(id).classList.toggle('open'); }
+
+    // COMPARE
+    const compareBtn = document.getElementById('compare-btn');
+    const compareResults = document.getElementById('compare-results');
+
+    async function doCompare() {
+      const name_a = document.getElementById('name-a').value.trim();
+      const name_b = document.getElementById('name-b').value.trim();
+      if (!name_a || !name_b) return;
+      compareBtn.disabled = true;
+      compareResults.innerHTML = '<div class="loading"><span class="spinner"></span> Comparing...</div>';
+      try {
+        const res = await fetch(`${API}/match`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({name_a, name_b}),
+        });
+        const data = await res.json();
+        renderCompare(data);
+      } catch (e) {
+        compareResults.innerHTML = `<div class="info-box" style="border-color:#fecaca;background:#fef2f2">Error: ${e.message}</div>`;
+      } finally { compareBtn.disabled = false; }
+    }
+    compareBtn.addEventListener('click', doCompare);
+    document.getElementById('name-a').addEventListener('keydown', e => { if (e.key === 'Enter') doCompare(); });
+    document.getElementById('name-b').addEventListener('keydown', e => { if (e.key === 'Enter') doCompare(); });
+
+    function renderCompare(data) {
+      const sc = scorePillClass(data.final_score);
+      let html = `<div class="big-score">
+        <div class="big-score-label">Match Confidence</div>
+        <div class="big-score-value ${sc}">${pct(data.final_score)}%</div>
+        <div class="big-score-names">${esc(data.name_a)} &harr; ${esc(data.name_b)}</div>
+      </div>`;
+
+      // Strategy table
+      html += '<table><thead><tr><th>Strategy</th><th>Score</th><th>Query Form</th><th>Candidate Form</th></tr></thead><tbody>';
+      for (const s of data.strategy_scores) {
+        html += `<tr>
+          <td style="font-weight:600">${s.strategy_name}</td>
+          <td><span class="score-pill ${scorePillClass(s.score)}">${pct(s.score)}%</span></td>
+          <td class="mono">${esc(s.query_form) || '&mdash;'}</td>
+          <td class="mono">${esc(s.candidate_form) || '&mdash;'}</td>
+        </tr>`;
+      }
+      html += '</tbody></table>';
+
+      // Explanation
+      if (data.explanation && data.explanation.length > 0) {
+        html += '<div class="steps-section"><h4>Normalization Trace</h4>';
+        for (const exp of data.explanation) {
+          html += `<div class="step-row"><div class="step-name">${esc(exp.step)}</div><div class="step-detail">${esc(exp.description)}`;
+          if (exp.details) {
+            html += '<div class="tags" style="margin-top:4px">';
+            for (const [k, v] of Object.entries(exp.details)) {
+              html += `<span class="tag">${k}: ${esc(String(v))}</span>`;
+            }
+            html += '</div>';
+          }
+          html += '</div></div>';
+        }
+        html += '</div>';
+      }
+
+      compareResults.innerHTML = html;
+    }
+
+    // BATCH
+    const batchBtn = document.getElementById('batch-btn');
+    const batchResults = document.getElementById('batch-results');
+
+    async function doBatch() {
+      const lines = document.getElementById('batch-input').value.trim().split('\n').filter(l => l.trim());
+      if (lines.length === 0) return;
+      batchBtn.disabled = true;
+      batchResults.innerHTML = '<div class="loading"><span class="spinner"></span> Submitting...</div>';
+      try {
+        const res = await fetch(`${API}/batch`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({queries: lines.map(q => ({query: q.trim(), limit: 5}))}),
+        });
+        const data = await res.json();
+        pollBatch(data.job_id);
+      } catch (e) {
+        batchResults.innerHTML = `<div class="info-box" style="border-color:#fecaca;background:#fef2f2">Error: ${e.message}</div>`;
+        batchBtn.disabled = false;
+      }
+    }
+    batchBtn.addEventListener('click', doBatch);
+
+    async function pollBatch(jobId) {
+      let attempts = 0;
+      const poll = async () => {
+        const res = await fetch(`${API}/batch/${jobId}`);
+        const data = await res.json();
+        renderBatch(data);
+        if ((data.status === 'processing' || data.status === 'pending') && ++attempts < 120) {
+          setTimeout(poll, 500);
+        } else { batchBtn.disabled = false; }
+      };
+      await poll();
+    }
+
+    function renderBatch(data) {
+      let html = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <div><span class="status-badge status-${data.status}">${data.status}</span>
+          <span style="font-size:12px;color:#888;margin-left:8px">${data.progress} / ${data.total} queries</span></div>
+        <span class="mono" style="font-size:11px;color:#999">${data.job_id}</span>
+      </div>`;
+
+      if (data.results && data.results.length > 0) {
+        for (const r of data.results) {
+          if (!r || !r.query) continue;
+          html += `<div class="info-box"><h3>${esc(r.query)}</h3>`;
+          if (r.matches && r.matches.length > 0) {
+            html += '<table style="margin-top:8px"><thead><tr><th>#</th><th>Company</th><th>English</th><th>Score</th></tr></thead><tbody>';
+            for (const m of r.matches) {
+              html += `<tr>
+                <td style="color:#888;font-weight:600">${m.rank}</td>
+                <td style="font-weight:600">${esc(m.company_name)}</td>
+                <td>${m.en_name ? esc(m.en_name) : '<span style="color:#ccc">&mdash;</span>'}</td>
+                <td><span class="score-pill ${scorePillClass(m.score)}">${pct(m.score)}%</span></td>
+              </tr>`;
+            }
+            html += '</tbody></table>';
+          } else {
+            html += '<p style="color:#888;font-size:12px;margin-top:4px">No matches found</p>';
+          }
+          html += '</div>';
+        }
+      }
+
+      batchResults.innerHTML = html;
+    }
+  </script>
+</body>
+</html>
