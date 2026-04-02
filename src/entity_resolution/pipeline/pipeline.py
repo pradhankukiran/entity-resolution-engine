@@ -12,8 +12,9 @@ from dataclasses import dataclass, field
 
 from entity_resolution.core.config import Settings
 from entity_resolution.db.database import Database
-from entity_resolution.db.models import Company
 from entity_resolution.db import queries
+from entity_resolution.db.query_builder import build_get_by_ids
+from entity_resolution.entity_types.config import EntityRecord, EntityTypeConfig
 from entity_resolution.matching.base import StrategyResult
 from entity_resolution.matching.ensemble import EnsembleResult, EnsembleScorer
 from entity_resolution.matching.registry import StrategyRegistry
@@ -34,7 +35,7 @@ from entity_resolution.pipeline.explainer import ExplanationBuilder
 class MatchResult:
     """A single scored match returned by the pipeline."""
 
-    company: Company
+    entity: EntityRecord
     score: float
     rank: int
     ensemble_result: EnsembleResult
@@ -66,22 +67,39 @@ class ResolutionPipeline:
         pipeline = ResolutionPipeline(db, settings)
         result = await pipeline.resolve("ソニー株式会社")
         for m in result.matches:
-            print(m.company.name, m.score)
+            print(m.entity.name, m.score)
     """
 
-    def __init__(self, db: Database, settings: Settings) -> None:
+    def __init__(
+        self,
+        db: Database,
+        settings: Settings,
+        entity_config: EntityTypeConfig | None = None,
+    ) -> None:
         self._db = db
         self._settings = settings
-        self._normalizer = TextNormalizer()
+        self._entity_config = entity_config
+
+        # Build suffix lists from entity config if available
+        suffix_lists = entity_config.suffix_lists if entity_config else {}
+        self._normalizer = TextNormalizer(
+            jp_suffixes=suffix_lists.get("ja"),
+            en_suffixes=suffix_lists.get("en"),
+        )
         self._detector = LanguageDetector()
         self._transliterator = Transliterator()
         self._encoder = PhoneticEncoder()
         self._registry = StrategyRegistry.default()
-        self._scorer = EnsembleScorer(self._registry)
+        self._scorer = EnsembleScorer(
+            self._registry,
+            text_pairs=entity_config.text_form_pairs if entity_config else None,
+            phonetic_pairs=entity_config.phonetic_form_pairs if entity_config else None,
+        )
         self._blocker = CandidateBlocker(
             db,
             settings.trigram_candidate_limit,
             settings.phonetic_candidate_limit,
+            entity_config=entity_config,
         )
 
     # ------------------------------------------------------------------
@@ -129,15 +147,15 @@ class ResolutionPipeline:
 
         total_candidates = len(candidate_ids)
 
-        # 6. Fetch full Company objects
-        companies = await self._fetch_companies(candidate_ids)
+        # 6. Fetch full entity objects
+        entities = await self._fetch_entities(candidate_ids)
 
         # 7. Score each candidate
-        scored: list[tuple[Company, EnsembleResult]] = []
-        for company in companies:
-            ensemble_result = self._score_candidate(query_forms, company)
+        scored: list[tuple[EntityRecord, EnsembleResult]] = []
+        for entity in entities:
+            ensemble_result = self._score_candidate(query_forms, entity)
             if ensemble_result.final_score >= self._settings.min_score_threshold:
-                scored.append((company, ensemble_result))
+                scored.append((entity, ensemble_result))
 
         # 8. Sort by score descending
         scored.sort(key=lambda pair: pair[1].final_score, reverse=True)
@@ -147,19 +165,19 @@ class ResolutionPipeline:
 
         # 10. Build match results with explanations
         matches: list[MatchResult] = []
-        for rank, (company, ensemble_result) in enumerate(scored, start=1):
+        for rank, (entity, ensemble_result) in enumerate(scored, start=1):
             strategy_scores = {
                 sr.strategy_name: sr.score
                 for sr in ensemble_result.strategy_results
             }
             explanation.add_scoring(
-                candidate_name=company.name,
+                candidate_name=entity.name,
                 final_score=ensemble_result.final_score,
                 strategy_scores=strategy_scores,
             )
             matches.append(
                 MatchResult(
-                    company=company,
+                    entity=entity,
                     score=ensemble_result.final_score,
                     rank=rank,
                     ensemble_result=ensemble_result,
@@ -259,7 +277,7 @@ class ResolutionPipeline:
             # Japanese path
             normalized = self._normalizer.normalize_japanese(query)
             suffixes_found = self._detect_removed_suffixes(
-                query, normalized, self._normalizer.JP_SUFFIXES
+                query, normalized, self._normalizer._jp_suffixes
             )
             explanation.add_normalization(query, normalized, suffixes_found)
             forms["normalized"] = normalized
@@ -279,7 +297,7 @@ class ResolutionPipeline:
             # English / other path
             normalized = self._normalizer.normalize(query)
             suffixes_found = self._detect_removed_suffixes(
-                query, normalized, self._normalizer.EN_SUFFIXES
+                query, normalized, self._normalizer._en_suffixes
             )
             explanation.add_normalization(query, normalized, suffixes_found)
             forms["normalized"] = normalized
@@ -295,45 +313,36 @@ class ResolutionPipeline:
         return forms
 
     def _score_candidate(
-        self, query_forms: dict[str, str], company: Company
+        self, query_forms: dict[str, str], entity: EntityRecord
     ) -> EnsembleResult:
-        """Score a single candidate against all query forms.
-
-        Builds a candidate forms dict from the :class:`Company` fields using
-        the key names that the :class:`EnsembleScorer` expects, then delegates
-        to the scorer which tries all compatible form pairs internally.
-        """
-        candidate_forms = self._company_to_candidate_forms(company)
+        """Score a single candidate against all query forms."""
+        candidate_forms = self._entity_to_candidate_forms(entity)
         return self._scorer.score(query_forms, candidate_forms)
 
-    @staticmethod
-    def _company_to_candidate_forms(company: Company) -> dict[str, str]:
-        """Convert a Company into the candidate_forms dict expected by the scorer.
-
-        The ensemble scorer looks for these keys on the candidate side:
-            - ``name_normalized``
-            - ``en_name_normalized``
-            - ``name_romaji``
-            - ``phonetic_key``
-        """
+    def _entity_to_candidate_forms(self, entity: EntityRecord) -> dict[str, str]:
+        """Convert an EntityRecord into the candidate_forms dict for scoring."""
+        if self._entity_config is not None:
+            return self._entity_config.candidate_form_extractor(entity.data)
+        # Fallback: default company-style extraction
         forms: dict[str, str] = {
-            "name_normalized": company.name_normalized or "",
+            "name_normalized": entity.get("name_normalized") or "",
         }
-        if company.en_name_normalized:
-            forms["en_name_normalized"] = company.en_name_normalized
-        if company.name_romaji:
-            forms["name_romaji"] = company.name_romaji
-        if company.phonetic_key:
-            forms["phonetic_key"] = company.phonetic_key
+        if entity.get("en_name_normalized"):
+            forms["en_name_normalized"] = entity.get("en_name_normalized")
+        if entity.get("name_romaji"):
+            forms["name_romaji"] = entity.get("name_romaji")
+        if entity.get("phonetic_key"):
+            forms["phonetic_key"] = entity.get("phonetic_key")
         return forms
 
-    @staticmethod
-    def _remap_as_candidate_forms(forms: dict[str, str]) -> dict[str, str]:
-        """Remap a query-style forms dict into the candidate-side key schema.
-
-        Used by :meth:`compare` to treat the second name as a "candidate"
-        so the ensemble scorer's form-pair logic works correctly.
-        """
+    def _remap_as_candidate_forms(self, forms: dict[str, str]) -> dict[str, str]:
+        """Remap query-side forms into candidate-side keys for compare API."""
+        if (
+            self._entity_config is not None
+            and self._entity_config.query_to_candidate_remapper is not None
+        ):
+            return self._entity_config.query_to_candidate_remapper(forms)
+        # Fallback: default company-style remapping
         candidate: dict[str, str] = {}
         if "normalized" in forms:
             candidate["name_normalized"] = forms["normalized"]
@@ -344,26 +353,37 @@ class ResolutionPipeline:
             candidate["phonetic_key"] = forms["phonetic"]
         return candidate
 
-    async def _fetch_companies(self, company_ids: list[int]) -> list[Company]:
-        """Fetch :class:`Company` objects by IDs.
-
-        Uses a single ``IN (...)`` query for efficiency and preserves the
-        original ordering of *company_ids*.
-        """
-        if not company_ids:
+    async def _fetch_entities(self, entity_ids: list[int]) -> list[EntityRecord]:
+        """Fetch entities by IDs, preserving order."""
+        if not entity_ids:
             return []
 
-        placeholders = ", ".join("?" for _ in company_ids)
-        sql = queries.GET_COMPANIES_BY_IDS.format(placeholders=placeholders)
-        rows = await self._db.fetch_all(sql, company_ids)
+        if self._entity_config is not None:
+            sql = build_get_by_ids(self._entity_config, len(entity_ids))
+        else:
+            placeholders = ", ".join("?" for _ in entity_ids)
+            sql = queries.GET_COMPANIES_BY_IDS.format(placeholders=placeholders)
 
-        # Build a lookup so we can re-order to match the input order
-        by_id: dict[int, Company] = {}
-        for row in rows:
-            company = Company.from_row(row)
-            by_id[company.id] = company
+        rows = await self._db.fetch_all(sql, entity_ids)
 
-        return [by_id[cid] for cid in company_ids if cid in by_id]
+        if self._entity_config is not None:
+            by_id: dict[int, EntityRecord] = {}
+            for row in rows:
+                record = EntityRecord.from_row(self._entity_config, row)
+                by_id[record.id] = record
+        else:
+            # Fallback: wrap rows as generic entity records
+            by_id = {}
+            for row in rows:
+                record = EntityRecord(
+                    type_name="company",
+                    id=row["id"],
+                    name=row.get("name", ""),
+                    data=row,
+                )
+                by_id[record.id] = record
+
+        return [by_id[eid] for eid in entity_ids if eid in by_id]
 
     @staticmethod
     def _detect_removed_suffixes(
