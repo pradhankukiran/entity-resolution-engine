@@ -177,9 +177,9 @@ class BatchManager:
                     "query": query.query,
                     "matches": [
                         {
-                            "company_name": m.company.name,
-                            "en_name": m.company.en_name,
-                            "corporate_number": m.company.corporate_number,
+                            "entity_name": m.entity.name,
+                            "entity_type": m.entity.type_name,
+                            "entity_data": m.entity.data,
                             "score": m.score,
                             "rank": m.rank,
                         }
