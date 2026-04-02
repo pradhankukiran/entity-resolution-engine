@@ -58,6 +58,8 @@ class EnsembleScorer:
         self,
         registry: StrategyRegistry,
         weights: dict[str, float] | None = None,
+        text_pairs: list[tuple[str, str]] | None = None,
+        phonetic_pairs: list[tuple[str, str]] | None = None,
     ):
         """Initialize the ensemble scorer.
 
@@ -65,9 +67,17 @@ class EnsembleScorer:
             registry: Strategy registry with registered strategies.
             weights: Optional weight overrides ``{strategy_name: weight}``.
                 If *None*, each strategy's default ``weight`` property is used.
+            text_pairs: Form-pair definitions for text-based strategies.
+                If *None*, falls back to the module-level ``_TEXT_PAIRS``.
+            phonetic_pairs: Form-pair definitions for phonetic strategies.
+                If *None*, falls back to the module-level ``_PHONETIC_PAIRS``.
         """
         self._registry = registry
         self._weights = weights
+        self._text_pairs = text_pairs if text_pairs is not None else _TEXT_PAIRS
+        self._phonetic_pairs = (
+            phonetic_pairs if phonetic_pairs is not None else _PHONETIC_PAIRS
+        )
 
     def score(
         self,
@@ -162,8 +172,8 @@ class EnsembleScorer:
             return self._weights[strategy.name]
         return strategy.weight
 
-    @staticmethod
     def _get_compatible_pairs(
+        self,
         query_forms: dict[str, str],
         candidate_forms: dict[str, str],
         strategy_name: str,
@@ -176,9 +186,9 @@ class EnsembleScorer:
             respective dictionaries.
         """
         if strategy_name == "phonetic":
-            pair_defs = _PHONETIC_PAIRS
+            pair_defs = self._phonetic_pairs
         else:
-            pair_defs = _TEXT_PAIRS
+            pair_defs = self._text_pairs
 
         pairs: list[tuple[str, str, str, str]] = []
         for q_key, c_key in pair_defs:
