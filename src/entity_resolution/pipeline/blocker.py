@@ -17,22 +17,26 @@ from __future__ import annotations
 
 from entity_resolution.db.database import Database
 from entity_resolution.db import queries
+from entity_resolution.db.query_builder import build_search_by_ngrams, build_search_by_phonetic
+from entity_resolution.entity_types.config import EntityTypeConfig
 from entity_resolution.normalization.normalizer import TextNormalizer
 
 
 class CandidateBlocker:
-    """Retrieves candidate companies using trigram index and phonetic keys."""
+    """Retrieves candidate entities using trigram index and phonetic keys."""
 
     def __init__(
         self,
         db: Database,
         trigram_limit: int = 200,
         phonetic_limit: int = 100,
+        entity_config: EntityTypeConfig | None = None,
     ) -> None:
         self._db = db
         self._trigram_limit = trigram_limit
         self._phonetic_limit = phonetic_limit
         self._normalizer = TextNormalizer()
+        self._entity_config = entity_config
 
     async def get_candidates(self, query_forms: dict[str, str]) -> list[int]:
         """Get candidate company IDs using multiple blocking strategies.
@@ -77,36 +81,39 @@ class CandidateBlocker:
         return ordered
 
     async def _trigram_block(self, text: str) -> list[int]:
-        """Find candidates by trigram overlap.
-
-        Generates character trigrams from *text*, queries the
-        ``company_ngrams`` table, groups by ``company_id``, and returns the
-        top ``_trigram_limit`` companies ordered by descending overlap count.
-        """
+        """Find candidates by trigram overlap."""
         trigrams = self._normalizer.generate_trigrams(text)
         if not trigrams:
             return []
 
         trigram_list = list(trigrams)
-        placeholders = ", ".join("?" for _ in trigram_list)
-        sql = queries.SEARCH_BY_NGRAMS.format(placeholders=placeholders)
-        params = [*trigram_list, self._trigram_limit]
 
+        if self._entity_config is not None:
+            sql = build_search_by_ngrams(self._entity_config, len(trigram_list))
+            id_col = self._entity_config.id_column
+        else:
+            placeholders = ", ".join("?" for _ in trigram_list)
+            sql = queries.SEARCH_BY_NGRAMS.format(placeholders=placeholders)
+            id_col = "company_id"
+
+        params = [*trigram_list, self._trigram_limit]
         rows = await self._db.fetch_all(sql, params)
-        return [row["company_id"] for row in rows]
+        return [row[id_col] for row in rows]
 
     async def _phonetic_block(self, phonetic_key: str) -> list[int]:
-        """Find candidates by phonetic key match.
-
-        Uses both exact match and prefix match (first 4 characters) so that
-        minor phonetic-key variations still surface relevant candidates.
-        """
+        """Find candidates by phonetic key match."""
         if not phonetic_key:
             return []
 
-        # Use the first 4 characters as a prefix for broader matching
         prefix = phonetic_key[:4] if len(phonetic_key) >= 4 else phonetic_key
         params = [phonetic_key, prefix, self._phonetic_limit]
 
-        rows = await self._db.fetch_all(queries.SEARCH_BY_PHONETIC_KEY, params)
-        return [row["company_id"] for row in rows]
+        if self._entity_config is not None:
+            sql = build_search_by_phonetic(self._entity_config)
+            id_col = self._entity_config.id_column
+        else:
+            sql = queries.SEARCH_BY_PHONETIC_KEY
+            id_col = "company_id"
+
+        rows = await self._db.fetch_all(sql, params)
+        return [row[id_col] for row in rows]
