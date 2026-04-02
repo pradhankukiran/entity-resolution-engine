@@ -7,13 +7,17 @@ import unicodedata
 
 
 class TextNormalizer:
-    """Normalize company names for cross-language entity resolution.
+    """Normalize entity names for cross-language resolution.
 
-    The pipeline applies: NFKC unicode normalization, corporate suffix stripping,
+    The pipeline applies: NFKC unicode normalization, suffix stripping,
     case folding, and whitespace collapsing.
+
+    Suffix lists are injectable per entity type.  When not provided, the
+    default corporate suffixes are used for backward compatibility.
     """
 
-    # Japanese corporate suffixes (ordered longest-first for greedy matching)
+    # Default corporate suffixes (kept for backward compat; canonical
+    # versions now live in entity_types/company.py).
     JP_SUFFIXES: list[str] = [
         "特定非営利活動法人",
         "公益社団法人",
@@ -29,7 +33,6 @@ class TextNormalizer:
         "医療法人",
     ]
 
-    # English corporate suffixes (ordered longest-first, lowercased for comparison)
     EN_SUFFIXES: list[str] = [
         "kabushiki kaisha",
         "incorporated",
@@ -59,6 +62,14 @@ class TextNormalizer:
     # Pre-compiled pattern for collapsing whitespace
     _ws_re = re.compile(r"\s+")
 
+    def __init__(
+        self,
+        jp_suffixes: list[str] | None = None,
+        en_suffixes: list[str] | None = None,
+    ) -> None:
+        self._jp_suffixes = jp_suffixes if jp_suffixes is not None else self.JP_SUFFIXES
+        self._en_suffixes = en_suffixes if en_suffixes is not None else self.EN_SUFFIXES
+
     def normalize(self, text: str) -> str:
         """Full normalization pipeline.
 
@@ -79,13 +90,13 @@ class TextNormalizer:
         result = unicodedata.normalize("NFKC", text)
 
         # Step 2: Strip Japanese suffixes
-        result = self.strip_suffixes(result, self.JP_SUFFIXES)
+        result = self.strip_suffixes(result, self._jp_suffixes)
 
         # Step 3: Case fold
         result = result.casefold()
 
         # Step 4: Strip English suffixes (after casefolding)
-        result = self.strip_suffixes(result, self.EN_SUFFIXES)
+        result = self.strip_suffixes(result, self._en_suffixes)
 
         # Step 5: Whitespace collapse and strip
         result = self._ws_re.sub(" ", result).strip()
@@ -104,7 +115,7 @@ class TextNormalizer:
             return ""
 
         result = unicodedata.normalize("NFKC", text)
-        result = self.strip_suffixes(result, self.JP_SUFFIXES)
+        result = self.strip_suffixes(result, self._jp_suffixes)
         # For Japanese text, strip all whitespace (JP doesn't use word spaces)
         result = self._ws_re.sub("", result).strip()
 
@@ -122,7 +133,7 @@ class TextNormalizer:
             return ""
 
         result = text.casefold()
-        result = self.strip_suffixes(result, self.EN_SUFFIXES)
+        result = self.strip_suffixes(result, self._en_suffixes)
         result = self._ws_re.sub(" ", result).strip()
 
         return result
