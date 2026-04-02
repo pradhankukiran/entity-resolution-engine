@@ -34,9 +34,14 @@ class Database:
             rows = await db.fetch_all("SELECT * FROM companies")
     """
 
-    def __init__(self, db_path: str | None = None) -> None:
+    def __init__(
+        self,
+        db_path: str | None = None,
+        entity_registry: Any | None = None,
+    ) -> None:
         self._db_path = db_path or get_settings().database_path
         self._conn: aiosqlite.Connection | None = None
+        self._entity_registry = entity_registry
 
     # ------------------------------------------------------------------
     # Lifecycle
@@ -126,8 +131,21 @@ class Database:
     # ------------------------------------------------------------------
 
     async def _initialize_schema(self) -> None:
-        """Read schema.sql and execute it to create tables and indexes."""
-        schema_sql = _SCHEMA_PATH.read_text(encoding="utf-8")
-        await self.connection.executescript(schema_sql)
+        """Initialize database schema.
+
+        If an entity type registry was provided, generates schema DDL from
+        each registered entity type.  Otherwise falls back to the static
+        ``schema.sql`` file for backward compatibility.
+        """
+        if self._entity_registry is not None:
+            from entity_resolution.db.query_builder import build_schema
+
+            for config in self._entity_registry.all():
+                ddl = build_schema(config)
+                await self.connection.executescript(ddl)
+        else:
+            schema_sql = _SCHEMA_PATH.read_text(encoding="utf-8")
+            await self.connection.executescript(schema_sql)
+
         await self.connection.commit()
         logger.info("database.schema_initialized")
