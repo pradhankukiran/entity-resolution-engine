@@ -5,8 +5,8 @@ from __future__ import annotations
 from entity_resolution.matching.base import MatchStrategy
 from entity_resolution.matching.jaro_winkler import JaroWinklerStrategy
 from entity_resolution.matching.levenshtein import LevenshteinStrategy
-from entity_resolution.matching.token_sort import TokenSortStrategy
 from entity_resolution.matching.phonetic_match import PhoneticStrategy
+from entity_resolution.matching.token_sort import TokenSortStrategy
 
 
 class StrategyRegistry:

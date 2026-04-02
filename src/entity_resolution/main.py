@@ -2,22 +2,22 @@
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import AsyncIterator
 
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
+from entity_resolution.api.middleware import LoggingMiddleware
+from entity_resolution.api.routers import batch, health, match, search
+from entity_resolution.api.routers import entity as entity_router
 from entity_resolution.core.config import get_settings
 from entity_resolution.core.dependencies import shutdown
 from entity_resolution.core.logging import get_logger, setup_logging
-from entity_resolution.api.middleware import LoggingMiddleware
-from entity_resolution.api.routers import search, match, batch, health
-from entity_resolution.api.routers import entity as entity_router
 
 _STATIC_DIR = Path(__file__).parent / "static"
 

@@ -12,9 +12,9 @@ to the underlying row data.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, NamedTuple
-
+from typing import Any, NamedTuple
 
 # ------------------------------------------------------------------
 # Field definition for schema generation
@@ -84,8 +84,8 @@ class EntityTypeConfig:
     # Optional function to remap query-side forms into candidate-side keys
     # for the compare (name-vs-name) API.  If None the pipeline builds a
     # default mapping from *text_form_pairs*.
-    query_to_candidate_remapper: Callable[[dict[str, str]], dict[str, str]] | None = (
-        field(default=None)
+    query_to_candidate_remapper: Callable[[dict[str, str]], dict[str, str]] | None = field(
+        default=None
     )
 
 
@@ -150,10 +150,7 @@ class EntityTypeRegistry:
         """
         if type_name not in self._types:
             available = ", ".join(sorted(self._types)) or "(none)"
-            raise KeyError(
-                f"Unknown entity type '{type_name}'. "
-                f"Registered types: {available}"
-            )
+            raise KeyError(f"Unknown entity type '{type_name}'. Registered types: {available}")
         return self._types[type_name]
 
     def all(self) -> list[EntityTypeConfig]:

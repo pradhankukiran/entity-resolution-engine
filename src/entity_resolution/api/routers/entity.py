@@ -16,14 +16,12 @@ from entity_resolution.api.schemas import (
     SearchResponse,
     StrategyScore,
 )
-from entity_resolution.batch.manager import BatchManager, BatchQuery
+from entity_resolution.batch.manager import BatchQuery
 from entity_resolution.core.dependencies import (
     get_batch_manager,
     get_entity_registry,
     get_pipeline,
 )
-from entity_resolution.entity_types.config import EntityTypeRegistry
-from entity_resolution.pipeline.pipeline import ResolutionPipeline
 
 router = APIRouter()
 
@@ -42,7 +40,7 @@ def _validate_entity_type(
     return entity_type
 
 
-def _build_match_response(m) -> MatchResultResponse:  # noqa: ANN001
+def _build_match_response(m) -> MatchResultResponse:
     """Convert a pipeline MatchResult into the API response model."""
     strategy_scores = [
         StrategyScore(
@@ -121,17 +119,21 @@ async def match(
 
     explanation: list[dict] = []
     if "forms_a" in result:
-        explanation.append({
-            "step": "normalization_a",
-            "description": f"Normalized forms for '{request.name_a}'",
-            "details": result["forms_a"],
-        })
+        explanation.append(
+            {
+                "step": "normalization_a",
+                "description": f"Normalized forms for '{request.name_a}'",
+                "details": result["forms_a"],
+            }
+        )
     if "forms_b" in result:
-        explanation.append({
-            "step": "normalization_b",
-            "description": f"Normalized forms for '{request.name_b}'",
-            "details": result["forms_b"],
-        })
+        explanation.append(
+            {
+                "step": "normalization_b",
+                "description": f"Normalized forms for '{request.name_b}'",
+                "details": result["forms_b"],
+            }
+        )
 
     return CompareResponse(
         name_a=request.name_a,

@@ -5,8 +5,8 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends
 
 from entity_resolution.api.schemas import HealthResponse, StatsResponse
-from entity_resolution.core.dependencies import get_db, get_entity_registry, get_settings
 from entity_resolution.core.config import Settings
+from entity_resolution.core.dependencies import get_db, get_entity_registry, get_settings
 from entity_resolution.db.database import Database
 from entity_resolution.db.query_builder import build_get_stats
 

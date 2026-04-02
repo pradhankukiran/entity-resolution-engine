@@ -15,8 +15,8 @@ The results from both strategies are unioned and deduplicated.
 
 from __future__ import annotations
 
-from entity_resolution.db.database import Database
 from entity_resolution.db import queries
+from entity_resolution.db.database import Database
 from entity_resolution.db.query_builder import build_search_by_ngrams, build_search_by_phonetic
 from entity_resolution.entity_types.config import EntityTypeConfig
 from entity_resolution.normalization.normalizer import TextNormalizer

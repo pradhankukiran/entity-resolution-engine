@@ -10,9 +10,7 @@ from pydantic import BaseModel, Field
 class SearchRequest(BaseModel):
     """Request body for the /search endpoint."""
 
-    query: str = Field(
-        ..., min_length=1, max_length=200, description="Entity name to search for"
-    )
+    query: str = Field(..., min_length=1, max_length=200, description="Entity name to search for")
     limit: int = Field(10, ge=1, le=50, description="Maximum number of results")
 
 

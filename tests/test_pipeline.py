@@ -2,17 +2,14 @@
 
 from __future__ import annotations
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
-from entity_resolution.pipeline.explainer import ExplanationBuilder, ExplanationStep
+import pytest
+
+from entity_resolution.pipeline.explainer import ExplanationBuilder
 from entity_resolution.pipeline.pipeline import (
-    MatchResult,
-    PipelineResult,
     ResolutionPipeline,
 )
-from entity_resolution.matching.base import StrategyResult
-
 
 # ======================================================================
 # ExplanationBuilder
@@ -66,9 +63,7 @@ class TestExplanationBuilder:
 
     def test_add_blocking(self) -> None:
         builder = ExplanationBuilder()
-        builder.add_blocking(
-            trigram_candidates=150, phonetic_candidates=30, total_unique=160
-        )
+        builder.add_blocking(trigram_candidates=150, phonetic_candidates=30, total_unique=160)
         steps = builder.build()
 
         assert len(steps) == 1
@@ -103,9 +98,7 @@ class TestExplanationBuilder:
 
     def test_add_generic_step(self) -> None:
         builder = ExplanationBuilder()
-        builder.add_step(
-            "test", "A test step", input_value="in", output_value="out", foo="bar"
-        )
+        builder.add_step("test", "A test step", input_value="in", output_value="out", foo="bar")
         steps = builder.build()
 
         assert len(steps) == 1
@@ -116,9 +109,7 @@ class TestExplanationBuilder:
 
     def test_to_dict_list(self) -> None:
         builder = ExplanationBuilder()
-        builder.add_step(
-            "test", "A test step", input_value="in", output_value="out"
-        )
+        builder.add_step("test", "A test step", input_value="in", output_value="out")
         dicts = builder.to_dict_list()
 
         assert len(dicts) == 1

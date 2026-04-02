@@ -6,14 +6,12 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from entity_resolution.matching.base import MatchStrategy, StrategyResult
+from entity_resolution.matching.ensemble import EnsembleResult, EnsembleScorer
 from entity_resolution.matching.jaro_winkler import JaroWinklerStrategy
 from entity_resolution.matching.levenshtein import LevenshteinStrategy
-from entity_resolution.matching.token_sort import TokenSortStrategy
 from entity_resolution.matching.phonetic_match import PhoneticStrategy
 from entity_resolution.matching.registry import StrategyRegistry
-from entity_resolution.matching.ensemble import EnsembleScorer, EnsembleResult
-
+from entity_resolution.matching.token_sort import TokenSortStrategy
 
 # -----------------------------------------------------------------------
 # Helpers
@@ -453,9 +451,7 @@ class TestEnsemble:
         )
         assert result.final_score > 0.9
         assert len(result.strategy_results) == 4
-        phonetic_results = [
-            r for r in result.strategy_results if r.strategy_name == "phonetic"
-        ]
+        phonetic_results = [r for r in result.strategy_results if r.strategy_name == "phonetic"]
         assert len(phonetic_results) == 1
 
     def test_partial_match_scored_correctly(self):

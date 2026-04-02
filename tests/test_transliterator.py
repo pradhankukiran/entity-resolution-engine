@@ -4,10 +4,9 @@ from __future__ import annotations
 
 import pytest
 
-from entity_resolution.normalization.transliterator import Transliterator
 from entity_resolution.normalization.language import LanguageDetector
 from entity_resolution.normalization.phonetic import PhoneticEncoder
-
+from entity_resolution.normalization.transliterator import Transliterator
 
 # ======================================================================
 # Transliterator tests

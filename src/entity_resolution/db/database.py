@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any
 
 import aiosqlite
 
@@ -75,7 +76,7 @@ class Database:
     # Context manager
     # ------------------------------------------------------------------
 
-    async def __aenter__(self) -> "Database":
+    async def __aenter__(self) -> Database:
         await self.connect()
         return self
 
@@ -93,24 +94,18 @@ class Database:
             raise RuntimeError("Database is not connected. Call connect() first.")
         return self._conn
 
-    async def execute(
-        self, sql: str, parameters: Sequence[Any] = ()
-    ) -> aiosqlite.Cursor:
+    async def execute(self, sql: str, parameters: Sequence[Any] = ()) -> aiosqlite.Cursor:
         """Execute a single SQL statement and return the cursor."""
         cursor = await self.connection.execute(sql, parameters)
         await self.connection.commit()
         return cursor
 
-    async def execute_many(
-        self, sql: str, seq_of_parameters: Sequence[Sequence[Any]]
-    ) -> None:
+    async def execute_many(self, sql: str, seq_of_parameters: Sequence[Sequence[Any]]) -> None:
         """Execute a SQL statement against all parameter sequences."""
         await self.connection.executemany(sql, seq_of_parameters)
         await self.connection.commit()
 
-    async def fetch_one(
-        self, sql: str, parameters: Sequence[Any] = ()
-    ) -> dict[str, Any] | None:
+    async def fetch_one(self, sql: str, parameters: Sequence[Any] = ()) -> dict[str, Any] | None:
         """Execute a query and return the first row as a dict, or None."""
         cursor = await self.connection.execute(sql, parameters)
         row = await cursor.fetchone()
@@ -118,9 +113,7 @@ class Database:
             return None
         return dict(row)
 
-    async def fetch_all(
-        self, sql: str, parameters: Sequence[Any] = ()
-    ) -> list[dict[str, Any]]:
+    async def fetch_all(self, sql: str, parameters: Sequence[Any] = ()) -> list[dict[str, Any]]:
         """Execute a query and return all rows as a list of dicts."""
         cursor = await self.connection.execute(sql, parameters)
         rows = await cursor.fetchall()

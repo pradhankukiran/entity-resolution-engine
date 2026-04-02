@@ -1,7 +1,7 @@
 """Tests for API endpoints."""
 
 import pytest
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
 
 from entity_resolution.main import create_app
 
@@ -48,9 +48,7 @@ class TestSearchEndpoint:
 class TestMatchEndpoint:
     @pytest.mark.asyncio
     async def test_match_valid(self, client):
-        response = await client.post(
-            "/match", json={"name_a": "Sony", "name_b": "ソニー"}
-        )
+        response = await client.post("/match", json={"name_a": "Sony", "name_b": "ソニー"})
         assert response.status_code == 200
         data = response.json()
         assert "final_score" in data

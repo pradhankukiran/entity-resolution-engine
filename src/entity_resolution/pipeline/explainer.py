@@ -69,9 +69,7 @@ class ExplanationBuilder:
     # Domain-specific convenience methods
     # ------------------------------------------------------------------
 
-    def add_language_detection(
-        self, query: str, detected_lang: str, script: str
-    ) -> None:
+    def add_language_detection(self, query: str, detected_lang: str, script: str) -> None:
         """Record language detection result."""
         self._steps.append(
             ExplanationStep(
@@ -87,9 +85,7 @@ class ExplanationBuilder:
         self, original: str, normalized: str, suffixes_removed: list[str]
     ) -> None:
         """Record normalization result."""
-        suffix_info = (
-            f", removed suffixes: {suffixes_removed}" if suffixes_removed else ""
-        )
+        suffix_info = f", removed suffixes: {suffixes_removed}" if suffixes_removed else ""
         self._steps.append(
             ExplanationStep(
                 step="normalization",
@@ -100,9 +96,7 @@ class ExplanationBuilder:
             )
         )
 
-    def add_transliteration(
-        self, original: str, romaji: str, variants: list[str]
-    ) -> None:
+    def add_transliteration(self, original: str, romaji: str, variants: list[str]) -> None:
         """Record transliteration result."""
         self._steps.append(
             ExplanationStep(
@@ -160,9 +154,7 @@ class ExplanationBuilder:
         self._steps.append(
             ExplanationStep(
                 step="scoring",
-                description=(
-                    f"Scored '{candidate_name}' -> {final_score:.4f}"
-                ),
+                description=(f"Scored '{candidate_name}' -> {final_score:.4f}"),
                 input_value=candidate_name,
                 output_value=f"{final_score:.4f}",
                 details={"strategy_scores": strategy_scores},

@@ -8,11 +8,11 @@ from __future__ import annotations
 
 from functools import lru_cache
 
+from entity_resolution.batch.manager import BatchManager
 from entity_resolution.core.config import Settings
 from entity_resolution.db.database import Database
 from entity_resolution.entity_types.config import EntityTypeRegistry
 from entity_resolution.pipeline.pipeline import ResolutionPipeline
-from entity_resolution.batch.manager import BatchManager
 
 # ---------------------------------------------------------------------------
 # Settings (synchronous, cached)

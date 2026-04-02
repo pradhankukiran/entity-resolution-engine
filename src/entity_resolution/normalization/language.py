@@ -167,7 +167,7 @@ class LanguageDetector:
     def _try_langdetect(text: str) -> str:
         """Run langdetect, returning the ISO code or ``'unknown'`` on failure."""
         try:
-            from langdetect import detect, DetectorFactory
+            from langdetect import DetectorFactory, detect
 
             # Make langdetect deterministic
             DetectorFactory.seed = 0

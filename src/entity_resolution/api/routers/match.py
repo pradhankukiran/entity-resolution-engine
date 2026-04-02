@@ -36,17 +36,21 @@ async def match(request: MatchRequest) -> CompareResponse:
 
     explanation: list[dict] = []
     if "forms_a" in result:
-        explanation.append({
-            "step": "normalization_a",
-            "description": f"Normalized forms for '{request.name_a}'",
-            "details": result["forms_a"],
-        })
+        explanation.append(
+            {
+                "step": "normalization_a",
+                "description": f"Normalized forms for '{request.name_a}'",
+                "details": result["forms_a"],
+            }
+        )
     if "forms_b" in result:
-        explanation.append({
-            "step": "normalization_b",
-            "description": f"Normalized forms for '{request.name_b}'",
-            "details": result["forms_b"],
-        })
+        explanation.append(
+            {
+                "step": "normalization_b",
+                "description": f"Normalized forms for '{request.name_b}'",
+                "details": result["forms_b"],
+            }
+        )
 
     return CompareResponse(
         name_a=request.name_a,

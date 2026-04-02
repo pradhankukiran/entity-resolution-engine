@@ -159,7 +159,9 @@ class TestTextNormalizer:
 
     def test_full_pipeline_fullwidth_english(self) -> None:
         """Fullwidth English + suffix through full pipeline."""
-        result = self.normalizer.normalize("\uff33\uff4f\uff4e\uff59 Corporation")  # Ｓｏｎｙ Corporation
+        result = self.normalizer.normalize(
+            "\uff33\uff4f\uff4e\uff59 Corporation"
+        )  # Ｓｏｎｙ Corporation
         assert result == "sony"
 
     def test_full_pipeline_preserves_core_name(self) -> None:

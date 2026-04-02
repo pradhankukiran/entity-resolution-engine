@@ -11,11 +11,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from entity_resolution.core.config import Settings
-from entity_resolution.db.database import Database
 from entity_resolution.db import queries
+from entity_resolution.db.database import Database
 from entity_resolution.db.query_builder import build_get_by_ids
 from entity_resolution.entity_types.config import EntityRecord, EntityTypeConfig
-from entity_resolution.matching.base import StrategyResult
 from entity_resolution.matching.ensemble import EnsembleResult, EnsembleScorer
 from entity_resolution.matching.registry import StrategyRegistry
 from entity_resolution.normalization.language import LanguageDetector
@@ -24,7 +23,6 @@ from entity_resolution.normalization.phonetic import PhoneticEncoder
 from entity_resolution.normalization.transliterator import Transliterator
 from entity_resolution.pipeline.blocker import CandidateBlocker
 from entity_resolution.pipeline.explainer import ExplanationBuilder
-
 
 # ------------------------------------------------------------------
 # Result data classes
@@ -167,8 +165,7 @@ class ResolutionPipeline:
         matches: list[MatchResult] = []
         for rank, (entity, ensemble_result) in enumerate(scored, start=1):
             strategy_scores = {
-                sr.strategy_name: sr.score
-                for sr in ensemble_result.strategy_results
+                sr.strategy_name: sr.score for sr in ensemble_result.strategy_results
             }
             explanation.add_scoring(
                 candidate_name=entity.name,
@@ -222,9 +219,7 @@ class ResolutionPipeline:
 
         result = self._scorer.score(forms_a, candidate_forms)
 
-        strategy_scores = {
-            sr.strategy_name: sr.score for sr in result.strategy_results
-        }
+        strategy_scores = {sr.strategy_name: sr.score for sr in result.strategy_results}
 
         return {
             "name_a": name_a,
@@ -249,9 +244,7 @@ class ResolutionPipeline:
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _build_query_forms(
-        self, query: str, explanation: ExplanationBuilder
-    ) -> dict[str, str]:
+    def _build_query_forms(self, query: str, explanation: ExplanationBuilder) -> dict[str, str]:
         """Build the query forms dict based on detected language.
 
         For Japanese:
