@@ -6,7 +6,7 @@ services:
     volumes:
       - ./data:/app/data
     environment:
-      - ERE_DATABASE_PATH=data/companies.db
+      - ERE_DATABASE_PATH=data/entities.db
       - ERE_LOG_LEVEL=INFO
     restart: unless-stopped
     healthcheck:

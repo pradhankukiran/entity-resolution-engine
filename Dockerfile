@@ -1,26 +1,36 @@
-FROM python:3.11-slim
+# Stage 1: Build dependencies
+FROM python:3.11-slim AS builder
 
-WORKDIR /app
+WORKDIR /build
 
-# Install build dependencies for native extensions (pykakasi, etc.)
 RUN apt-get update && \
     apt-get install -y --no-install-recommends gcc && \
     rm -rf /var/lib/apt/lists/*
 
-# Copy project metadata first to leverage Docker layer caching
-COPY pyproject.toml .
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 
-# Install the project dependencies (without the source, so this layer is
-# cached unless pyproject.toml changes)
+COPY pyproject.toml .
 RUN pip install --no-cache-dir .
 
-# Now copy in the full source tree and install in editable mode so the
-# console script entry point resolves correctly.
 COPY . .
-RUN pip install --no-cache-dir -e .
+RUN pip install --no-cache-dir .
 
-# Ensure the data directory exists for volume mounting
-RUN mkdir -p /app/data
+# Stage 2: Runtime
+FROM python:3.11-slim
+
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+RUN useradd --create-home --shell /bin/bash appuser
+
+WORKDIR /app
+COPY --from=builder /build/src ./src
+COPY --from=builder /build/pyproject.toml .
+
+RUN mkdir -p /app/data && chown appuser:appuser /app/data
+
+USER appuser
 
 EXPOSE 8000
 

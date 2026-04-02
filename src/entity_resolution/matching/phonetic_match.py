@@ -100,6 +100,6 @@ class PhoneticStrategy(MatchStrategy):
 
         max_len = max(len(key_a), len(key_b))
         matches = sum(
-            a == b for a, b in zip(key_a.ljust(max_len), key_b.ljust(max_len))
+            a == b for a, b in zip(key_a.ljust(max_len), key_b.ljust(max_len), strict=True)
         )
         return matches / max_len

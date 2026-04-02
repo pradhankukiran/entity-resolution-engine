@@ -10,19 +10,18 @@ from __future__ import annotations
 import asyncio
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from enum import Enum
+from datetime import UTC, datetime
+from enum import StrEnum
 from typing import Any
 
 from entity_resolution.pipeline.pipeline import ResolutionPipeline
-
 
 # ------------------------------------------------------------------
 # Data types
 # ------------------------------------------------------------------
 
 
-class JobStatus(str, Enum):
+class JobStatus(StrEnum):
     """Lifecycle states for a batch job."""
 
     PENDING = "pending"
@@ -59,7 +58,7 @@ class BatchJob:
     status: JobStatus
     queries: list[BatchQuery]
     results: list[dict[str, Any]] = field(default_factory=list)
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     completed_at: datetime | None = None
     progress: int = 0
     total: int = 0
@@ -83,9 +82,7 @@ class BatchManager:
             batch (controls the asyncio semaphore).
     """
 
-    def __init__(
-        self, pipeline: ResolutionPipeline, max_workers: int = 4
-    ) -> None:
+    def __init__(self, pipeline: ResolutionPipeline, max_workers: int = 4) -> None:
         self._pipeline = pipeline
         self._max_workers = max_workers
         self._jobs: dict[str, BatchJob] = {}
@@ -146,22 +143,17 @@ class BatchManager:
             # concurrent writes.
             job.results = [{}] * job.total
 
-            tasks = [
-                self._process_query(job, i, q)
-                for i, q in enumerate(job.queries)
-            ]
+            tasks = [self._process_query(job, i, q) for i, q in enumerate(job.queries)]
             await asyncio.gather(*tasks)
 
             job.status = JobStatus.COMPLETED
-            job.completed_at = datetime.now(timezone.utc)
+            job.completed_at = datetime.now(UTC)
         except Exception as exc:
             job.status = JobStatus.FAILED
             job.error = str(exc)
-            job.completed_at = datetime.now(timezone.utc)
+            job.completed_at = datetime.now(UTC)
 
-    async def _process_query(
-        self, job: BatchJob, index: int, query: BatchQuery
-    ) -> None:
+    async def _process_query(self, job: BatchJob, index: int, query: BatchQuery) -> None:
         """Process a single query within a batch, respecting the semaphore.
 
         The result dict is stored at ``job.results[index]`` so that order
@@ -169,9 +161,7 @@ class BatchManager:
         """
         async with self._semaphore:
             try:
-                result = await self._pipeline.resolve(
-                    query.query, limit=query.limit
-                )
+                result = await self._pipeline.resolve(query.query, limit=query.limit)
                 job.results[index] = {
                     "index": index,
                     "query": query.query,

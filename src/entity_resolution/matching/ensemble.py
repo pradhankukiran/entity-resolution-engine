@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from entity_resolution.matching.base import MatchStrategy, StrategyResult
 from entity_resolution.matching.registry import StrategyRegistry
@@ -75,9 +75,7 @@ class EnsembleScorer:
         self._registry = registry
         self._weights = weights
         self._text_pairs = text_pairs if text_pairs is not None else _TEXT_PAIRS
-        self._phonetic_pairs = (
-            phonetic_pairs if phonetic_pairs is not None else _PHONETIC_PAIRS
-        )
+        self._phonetic_pairs = phonetic_pairs if phonetic_pairs is not None else _PHONETIC_PAIRS
 
     def score(
         self,
@@ -109,9 +107,7 @@ class EnsembleScorer:
         candidate_forms_used: set[str] = set()
 
         for strategy in strategies:
-            pairs = self._get_compatible_pairs(
-                query_forms, candidate_forms, strategy.name
-            )
+            pairs = self._get_compatible_pairs(query_forms, candidate_forms, strategy.name)
 
             best_result: StrategyResult | None = None
 
@@ -185,16 +181,11 @@ class EnsembleScorer:
             candidate_text)`` tuples where both forms are present in their
             respective dictionaries.
         """
-        if strategy_name == "phonetic":
-            pair_defs = self._phonetic_pairs
-        else:
-            pair_defs = self._text_pairs
+        pair_defs = self._phonetic_pairs if strategy_name == "phonetic" else self._text_pairs
 
         pairs: list[tuple[str, str, str, str]] = []
         for q_key, c_key in pair_defs:
             if q_key in query_forms and c_key in candidate_forms:
-                pairs.append(
-                    (q_key, query_forms[q_key], c_key, candidate_forms[c_key])
-                )
+                pairs.append((q_key, query_forms[q_key], c_key, candidate_forms[c_key]))
 
         return pairs

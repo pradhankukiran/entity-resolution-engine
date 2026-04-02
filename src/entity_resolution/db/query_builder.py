@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from entity_resolution.entity_types.config import EntityTypeConfig
 
-
 # ------------------------------------------------------------------
 # Schema DDL
 # ------------------------------------------------------------------
@@ -22,13 +21,13 @@ def build_schema(config: EntityTypeConfig) -> str:
     lines.append(f"CREATE TABLE IF NOT EXISTS {config.table_name} (")
     lines.append("    id INTEGER PRIMARY KEY AUTOINCREMENT,")
 
-    for i, f in enumerate(config.db_fields):
+    for f in config.db_fields:
         parts = [f"    {f.name} {f.sql_type}"]
         if f.unique:
             parts.append("UNIQUE")
         if not f.nullable:
             parts.append("NOT NULL")
-        trail = "," if i < len(config.db_fields) - 1 else ","
+        trail = ","
         lines.append(" ".join(parts) + trail)
 
     lines.append("    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
@@ -38,10 +37,7 @@ def build_schema(config: EntityTypeConfig) -> str:
     # Ngram table
     lines.append(f"CREATE TABLE IF NOT EXISTS {config.ngram_table_name} (")
     lines.append("    id INTEGER PRIMARY KEY AUTOINCREMENT,")
-    lines.append(
-        f"    {config.id_column} INTEGER NOT NULL "
-        f"REFERENCES {config.table_name}(id),"
-    )
+    lines.append(f"    {config.id_column} INTEGER NOT NULL REFERENCES {config.table_name}(id),")
     lines.append("    ngram TEXT NOT NULL,")
     lines.append("    source_field TEXT NOT NULL")
     lines.append(");")
@@ -52,14 +48,12 @@ def build_schema(config: EntityTypeConfig) -> str:
         if f.indexed:
             idx_name = f"idx_{config.table_name}_{f.name}"
             lines.append(
-                f"CREATE INDEX IF NOT EXISTS {idx_name} "
-                f"ON {config.table_name}({f.name});"
+                f"CREATE INDEX IF NOT EXISTS {idx_name} ON {config.table_name}({f.name});"
             )
         if f.unique:
             idx_name = f"idx_{config.table_name}_{f.name}"
             lines.append(
-                f"CREATE INDEX IF NOT EXISTS {idx_name} "
-                f"ON {config.table_name}({f.name});"
+                f"CREATE INDEX IF NOT EXISTS {idx_name} ON {config.table_name}({f.name});"
             )
 
     # Indexes on the ngram table
@@ -84,10 +78,7 @@ def build_insert_entity(config: EntityTypeConfig) -> str:
     """Generate an INSERT statement for the entity table."""
     columns = ", ".join(f.name for f in config.db_fields)
     placeholders = ", ".join("?" for _ in config.db_fields)
-    return (
-        f"INSERT INTO {config.table_name} ({columns})\n"
-        f"VALUES ({placeholders})"
-    )
+    return f"INSERT INTO {config.table_name} ({columns})\nVALUES ({placeholders})"
 
 
 def build_insert_ngram(config: EntityTypeConfig) -> str:
@@ -146,12 +137,7 @@ def _all_columns(config: EntityTypeConfig) -> str:
 def build_get_by_id(config: EntityTypeConfig) -> str:
     """Generate a SELECT for a single entity by id."""
     cols = _all_columns(config)
-    return (
-        f"SELECT\n"
-        f"    {cols}\n"
-        f"FROM {config.table_name}\n"
-        f"WHERE id = ?"
-    )
+    return f"SELECT\n    {cols}\nFROM {config.table_name}\nWHERE id = ?"
 
 
 def build_get_by_ids(config: EntityTypeConfig, count: int) -> str:
@@ -159,11 +145,7 @@ def build_get_by_ids(config: EntityTypeConfig, count: int) -> str:
     cols = _all_columns(config)
     placeholders = ", ".join("?" for _ in range(count))
     return (
-        f"SELECT\n"
-        f"    {cols}\n"
-        f"FROM {config.table_name}\n"
-        f"WHERE id IN ({placeholders})\n"
-        f"ORDER BY id"
+        f"SELECT\n    {cols}\nFROM {config.table_name}\nWHERE id IN ({placeholders})\nORDER BY id"
     )
 
 

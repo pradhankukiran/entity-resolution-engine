@@ -36,6 +36,9 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             duration_ms=round(duration_ms, 2),
         )
 
-        # Add timing header for clients
+        # Timing and security headers
         response.headers["X-Processing-Time-Ms"] = str(round(duration_ms, 2))
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         return response
